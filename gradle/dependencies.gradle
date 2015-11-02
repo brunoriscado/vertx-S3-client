@@ -1,0 +1,75 @@
+repositories {
+    mavenLocal()
+    mavenCentral()
+    maven {
+        url = 'http://oss.sonatype.org/content/repositories/snapshots/'
+    }
+}
+
+ext {
+    vertxVersion= '3.0.0'
+
+    //decorator
+    mockitoVersion = '1.10.19'
+    junitVersion = '4.11'
+    slf4jVersion = '1.7.7'
+    logbackVersion = '1.1.2'
+    commonsIOVersion = '2.4'
+    commonsConfigurationVersion = '1.10'
+    commonsFileUploadVersion = '1.3'
+    commonsCodec = '1.10'
+    groovyVersion = '2.3.7'
+    hamcrestVersion = '1.3'
+    jsonPathVersion = '0.9.1'
+    amazonAwsVersion = '1.9.16'
+    googleGuavaVersion = '18.0'
+    googleCodeVersion = '3.0.0'
+    restAssuredVersion = '2.5.0'
+    jacksonVersion = '2.6.0'
+}
+
+dependencies {
+    //Vertx
+    compile("io.vertx:vertx-core:$vertxVersion")
+    compile("io.vertx:vertx-web:$vertxVersion")
+    compile("io.vertx:vertx-rx-java:$vertxVersion")
+
+    //logging
+    compile("org.slf4j:slf4j-api:$slf4jVersion")
+
+    //apache commons
+    compile("commons-io:commons-io:$commonsIOVersion")
+    compile("commons-configuration:commons-configuration:$commonsConfigurationVersion")
+    compile("commons-fileupload:commons-fileupload:$commonsFileUploadVersion")
+    compile("commons-codec:commons-codec:$commonsCodec")
+
+
+    //google
+    compile("com.google.guava:guava:$googleGuavaVersion")
+    compile("com.google.code.findbugs:jsr305:$googleCodeVersion")
+
+    //Mockito
+    compile("org.hamcrest:hamcrest-library:$hamcrestVersion")
+    compile("org.hamcrest:hamcrest-core:$hamcrestVersion")
+    compile("org.mockito:mockito-all:$mockitoVersion")
+
+    //Jackson XML
+    compile("com.fasterxml.jackson.dataformat:jackson-dataformat-xml:$jacksonVersion")
+
+    //Jayway xpath
+    compile("com.jayway.restassured:xml-path:$restAssuredVersion")
+
+
+    //Test Dependencies
+    testCompile("org.hamcrest:hamcrest-library:$hamcrestVersion")
+    testCompile("org.hamcrest:hamcrest-core:$hamcrestVersion")
+    testCompile("junit:junit:$junitVersion")
+    testCompile("ch.qos.logback:logback-classic:$logbackVersion")
+    testCompile("org.slf4j:jcl-over-slf4j:$slf4jVersion")
+    testCompile("io.vertx:vertx-unit:$vertxVersion")
+    testCompile("io.vertx:vertx-service-factory:$vertxVersion")
+    testCompile("org.mockito:mockito-all:$mockitoVersion")
+    testCompile("org.codehaus.groovy:groovy-all:$groovyVersion")
+    testCompile("com.jayway.jsonpath:json-path:$jsonPathVersion")
+    testCompile("com.jayway.restassured:rest-assured:$restAssuredVersion")
+}

@@ -1,0 +1,27 @@
+buildscript {
+    repositories {
+        jcenter()
+    }
+}
+
+plugins{
+    id "java"
+    id "idea"
+    id "maven"
+}
+
+idea {
+    module {
+        downloadSources = true
+        downloadJavadoc = true
+        excludeDirs = [file('.gradle'), file('.idea'), file('build')]
+    }
+}
+
+group = 'com.vertx.s3'
+version = this.properties['branch'] + "-" + this.properties['buildNumber']
+
+
+apply from: 'gradle/dependencies.gradle'
+apply from: 'gradle/tasks.gradle'
+

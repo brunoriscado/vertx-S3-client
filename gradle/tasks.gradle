@@ -1,0 +1,49 @@
+tasks.withType(JavaCompile){
+    options.compilerArgs << "-parameters"
+}
+
+test {
+    afterTest { desc, result ->
+        def time = result.endTime - result.startTime
+        println "Test [${desc.className}] ${desc.name}: ${result.resultType} in ${time}ms"
+    }
+    testLogging {
+        afterSuite { desc, result ->
+            if (!desc.parent) { // will match the outermost suite
+                println "Results: ${result.resultType} -->  ${result.testCount} tests ( ${result.successfulTestCount} successes, ${result.failedTestCount} failures, ${result.skippedTestCount} skipped ) "
+            }
+        }
+    }
+}
+
+jar {
+    baseName = 'dmp-content'
+    group = 'com.northplains.dmp'
+    version = project.version
+}
+
+task testJar(type: Jar) {
+    classifier = 'tests'
+    from sourceSets.test.output
+    include 'com/northplains/dmp/content/integration/controllers/*.class'
+    include 'com/northplains/dmp/content/integration/controllers/decorator/*.class'
+    include 'com/northplains/dmp/content/integration/controllers/impl/*.class'
+}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+artifacts {
+    archives testJar, sourcesJar
+}
+
+task generatePom << {
+    pom {
+    }.writeTo("$buildDir/libs/$project.name-$project.version" + ".pom")
+}
+
+compileJava() {
+    dependsOn generatePom
+}
