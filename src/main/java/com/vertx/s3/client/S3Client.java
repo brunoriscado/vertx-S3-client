@@ -67,7 +67,7 @@ public class S3Client {
         this.bucket = bucket;
         this.canonicalizedResource = StringUtils.isBlank(region) ?
                 bucket + "." + endpointBase :
-                bucket  + "." + region + "." + endpointBase;
+                bucket + "." + region + "." + endpointBase;
         this.client = vertx.createHttpClient(new HttpClientOptions().setDefaultHost(canonicalizedResource));
     }
 
@@ -79,27 +79,24 @@ public class S3Client {
         request.end();
     }
 
-    // create GET -> request Object
+    // create GET -> request S3Object
     public HttpClientRequest createGetRequest(String key, Handler<HttpClientResponse> handler) {
         HttpClientRequest httpRequest = null;
         try {
             httpRequest = new S3RequestHelper(bucket, awsAccessKey, awsSecretKey)
-                    .createRequest(client, HttpMethod.GET, key, null, handler);
+                    .createRequest(client, HttpMethod.GET, key, null, handler, true);
         } catch (UnsupportedEncodingException e) {
             throw Throwables.propagate(e);
         }
         return httpRequest;
     }
 
-    // create GET -> request Object
+    // create GET -> request S3Object
     public Observable<HttpClientResponse> createGetRequest(String key) {
         ObservableHandler<HttpClientResponse> responseHandler = RxHelper.observableHandler();
-        //TODO remove querystring
-        Map<String, String> queryString = new HashMap<String, String>();
-        queryString.put("response-cache-control", "No-cache");
-        try{
+        try {
             HttpClientRequest httpRequest = new S3RequestHelper(bucket, awsAccessKey, awsSecretKey)
-                    .createRequest(client, HttpMethod.GET, key, queryString, responseHandler.toHandler());
+                    .createRequest(client, HttpMethod.GET, key, null, responseHandler.toHandler(), true);
             httpRequest.end();
         } catch (UnsupportedEncodingException e) {
             throw Throwables.propagate(e);
@@ -107,21 +104,29 @@ public class S3Client {
         return responseHandler;
     }
 
+    public Observable<HttpClientResponse> createListObjectsRequest(String prefix, String delimiter, String encodingType, String marker) {
+        return createListObjectsRequest(prefix, delimiter, MAX_KEYS_LIST, encodingType, marker);
+    }
+
     public Observable<HttpClientResponse> createListObjectsRequest(String prefix, String delimiter, int maxKeys, String encodingType, String marker) {
         ObservableHandler<HttpClientResponse> responseHandler = RxHelper.observableHandler();
         Map<String, String> queryString = new HashMap<String, String>();
-        queryString.put("prefix", prefix);
-        queryString.put("delimiter", delimiter);
+        if (prefix != null) {
+            queryString.put("prefix", prefix);
+        }
+        if (delimiter != null){
+            queryString.put("delimiter", delimiter);
+        }
         queryString.put("max-keys", String.valueOf(maxKeys));
-        queryString.put("encoding-type", encodingType);
-        queryString.put("marker", marker);
+        if (encodingType != null){
+            queryString.put("encoding-type",encodingType);
+        }
+        if (marker != null){
+            queryString.put("marker", marker);
+        }
         try{
             HttpClientRequest httpRequest = new S3RequestHelper(bucket, awsAccessKey, awsSecretKey)
-                    .createRequest(client,
-                            HttpMethod.GET,
-                            null,
-                            queryString,
-                            responseHandler.toHandler());
+                    .createRequest(client, HttpMethod.GET, null, queryString, responseHandler.toHandler(), false);
             httpRequest.end();
         } catch (UnsupportedEncodingException e) {
             throw Throwables.propagate(e);
@@ -185,7 +190,7 @@ public class S3Client {
         try {
             httpRequest = new S3RequestHelper(bucket, awsAccessKey, awsSecretKey)
                     .setUserMetadataHeaders(metadata)
-                    .createRequest(client, HttpMethod.PUT, key, null, handler);
+                    .createRequest(client, HttpMethod.PUT, key, null, handler, true);
         } catch (UnsupportedEncodingException e) {
             throw Throwables.propagate(e);
         }
@@ -200,7 +205,7 @@ public class S3Client {
                     .addRequestHeaders(HttpHeaders.CONTENT_TYPE.toString(), contentType)
                     .addRequestHeaders("Content-Disposition", "form-data; filename=" + filename + ";")
                     .setUserMetadataHeaders(metadata)
-                    .createRequest(client, HttpMethod.PUT, key, null, handler);
+                    .createRequest(client, HttpMethod.PUT, key, null, handler, true);
         } catch (UnsupportedEncodingException e) {
             throw Throwables.propagate(e);
         }
@@ -214,7 +219,7 @@ public class S3Client {
         try {
             HttpClientRequest httpRequest = new S3RequestHelper(bucket, awsAccessKey, awsSecretKey)
                     .setUserMetadataHeaders(metadata)
-                    .createRequest(client, HttpMethod.PUT, key, null, responseHandler.toHandler());
+                    .createRequest(client, HttpMethod.PUT, key, null, responseHandler.toHandler(), true);
             httpRequest.end(data);
 
         } catch (UnsupportedEncodingException e) {
@@ -236,7 +241,7 @@ public class S3Client {
                     .addRequestHeaders(HttpHeaders.CONTENT_TYPE.toString(), contentType)
                     .addRequestHeaders("Content-Disposition", "form-data; filename=" + filename + ";")
                     .setUserMetadataHeaders(metadata)
-                    .createRequest(client, HttpMethod.PUT, key, null, responseHandler.toHandler());
+                    .createRequest(client, HttpMethod.PUT, key, null, responseHandler.toHandler(), true);
 
             Buffer buffer = Buffer.buffer();
 
@@ -267,7 +272,7 @@ public class S3Client {
                     .addRequestHeaders(HttpHeaders.CONTENT_TYPE.toString(), contentType)
                     .addRequestHeaders("Content-Disposition", "form-data; filename=" + filename + ";")
                     .setUserMetadataHeaders(metadata)
-                    .createRequest(client, HttpMethod.PUT, key, null, responseHandler.toHandler());
+                    .createRequest(client, HttpMethod.PUT, key, null, responseHandler.toHandler(), true);
 
             httpRequest.putHeader(HttpHeaders.CONTENT_LENGTH.toString(), String.valueOf(fileSize));
 
@@ -308,7 +313,7 @@ public class S3Client {
                     .addRequestHeaders(HttpHeaders.CONTENT_TYPE.toString(), contentType)
                     .addRequestHeaders("Content-Disposition", "form-data; filename=" + filename + ";")
                     .setUserMetadataHeaders(metadata)
-                    .createRequest(client, HttpMethod.PUT, key, null, responseHandler.toHandler());
+                    .createRequest(client, HttpMethod.PUT, key, null, responseHandler.toHandler(), true);
 
             httpRequest.putHeader(HttpHeaders.CONTENT_LENGTH.toString(), String.valueOf(fileSize));
 
@@ -341,24 +346,24 @@ public class S3Client {
         request.end();
     }
 
-    // create DELETE -> request Object
+    // create DELETE -> request S3Object
     public HttpClientRequest createDeleteRequest(String key, Handler<HttpClientResponse> handler) {
         HttpClientRequest httpRequest = null;
         try {
             httpRequest = new S3RequestHelper(bucket, awsAccessKey, awsSecretKey)
-                    .createRequest(client, HttpMethod.DELETE, key, null, handler);
+                    .createRequest(client, HttpMethod.DELETE, key, null, handler, true);
         } catch (UnsupportedEncodingException e) {
             throw Throwables.propagate(e);
         }
         return httpRequest;
     }
 
-    // create DELETE -> request Object
+    // create DELETE -> request S3Object
     public Observable<HttpClientResponse> createDeleteRequest(String key) {
         ObservableHandler<HttpClientResponse> responseHandler = RxHelper.observableHandler();
         try {
             HttpClientRequest httpRequest = new S3RequestHelper(bucket, awsAccessKey, awsSecretKey)
-                    .createRequest(client, HttpMethod.DELETE, key, null, responseHandler.toHandler());
+                    .createRequest(client, HttpMethod.DELETE, key, null, responseHandler.toHandler(), true);
             httpRequest.end();
         } catch (UnsupportedEncodingException e) {
             return Observable.error(e);
@@ -377,7 +382,7 @@ public class S3Client {
         try {
             HttpClientRequest httpRequest = new S3RequestHelper(bucket, awsAccessKey, awsSecretKey)
                     .setUserMetadataHeaders(metadata)
-                    .createRequest(client, HttpMethod.POST, key, queryString, responseHandler.toHandler());
+                    .createRequest(client, HttpMethod.POST, key, queryString, responseHandler.toHandler(), true);
             httpRequest.end();
         } catch (UnsupportedEncodingException e) {
             return Observable.error(e);
@@ -396,11 +401,7 @@ public class S3Client {
             queryString.put("uploadId", uploadId);
             try {
                 HttpClientRequest httpRequest = new S3RequestHelper(bucket, awsAccessKey, awsSecretKey)
-                        .createRequest(client,
-                                HttpMethod.POST,
-                                key,
-                                queryString,
-                                responseHandler.toHandler());
+                        .createRequest(client, HttpMethod.POST, key, queryString, responseHandler.toHandler(), true);
 
                 httpRequest.putHeader(HttpHeaders.CONTENT_LENGTH.toString(), String.valueOf(fileSize));
 
@@ -427,7 +428,7 @@ public class S3Client {
         queryString.put("uploadId", uploadId);
         try {
             HttpClientRequest httpRequest = new S3RequestHelper(bucket, awsAccessKey, awsSecretKey)
-                    .createRequest(client, HttpMethod.POST, key, queryString, responseHandler.toHandler());
+                    .createRequest(client, HttpMethod.POST, key, queryString, responseHandler.toHandler(), true);
             httpRequest.end(xmlMapper.writeValueAsString(parts));
         } catch (UnsupportedEncodingException e) {
             return Observable.error(e);
@@ -445,7 +446,7 @@ public class S3Client {
         queryString.put("uploadId", uploadId);
         try {
             HttpClientRequest httpRequest = new S3RequestHelper(bucket, awsAccessKey, awsSecretKey)
-                    .createRequest(client, HttpMethod.DELETE, key, queryString, responseHandler.toHandler());
+                    .createRequest(client, HttpMethod.DELETE, key, queryString, responseHandler.toHandler(), true);
             httpRequest.end();
         } catch (UnsupportedEncodingException e) {
             return Observable.error(e);

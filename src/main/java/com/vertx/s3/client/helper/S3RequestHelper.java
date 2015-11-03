@@ -56,6 +56,7 @@ public class S3RequestHelper {
     }
 
     /**
+     * TODO - update to version 4 authorization - http://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-auth-using-authorization-header.html
      * Calculate the signature
      * http://docs.amazonwebservices.com/AmazonS3/latest/dev/RESTAuthentication.html#ConstructingTheAuthenticationHeader
      *
@@ -86,8 +87,8 @@ public class S3RequestHelper {
                     (contentType == null ? "" : contentType) + "\n\n" + // Skipping the date, we'll use the x-amz date instead
                     canonicalizedAmzHeaders +
                     "/" + bucket +
-                    (StringUtils.isBlank(key) ? "/" : "/" + key + "/") +
-                    queryString;
+                    (StringUtils.isBlank(key) ? "/" : "/" + key) +
+                    (StringUtils.isBlank(queryString) ? "" : queryString);
 
             String signature;
             try {
@@ -172,26 +173,27 @@ public class S3RequestHelper {
             HttpMethod method,
             String key,
             Map<String, String> queryString,
-            Handler<HttpClientResponse> responseHandler) throws UnsupportedEncodingException {
+            Handler<HttpClientResponse> responseHandler,
+            boolean qsIncludedInAuth) throws UnsupportedEncodingException {
         HttpClientRequest request = null;
         String query = prepareQueryString(queryString);
         switch (method) {
             case GET:
                 request = client.get("/" +
                         (StringUtils.isBlank(key) ? "" : key) +
-                        URLEncoder.encode(query, "UTF-8"),
+                        query,
                         responseHandler);
                 break;
             case DELETE:
                 request = client.delete("/" +
                         (StringUtils.isBlank(key) ? "" : key) +
-                        URLEncoder.encode(query, "UTF-8"),
+                        query,
                         responseHandler);
                 break;
             case PUT:
                 request = client.put("/" +
                         (StringUtils.isBlank(key) ? "" : key) +
-                        URLEncoder.encode(query, "UTF-8"),
+                        query,
                         responseHandler);
                 //Populate user metadata headers when inserting content in S3
                 if (userMetadataHeaders != null) {
@@ -201,7 +203,7 @@ public class S3RequestHelper {
             case POST:
                 request = client.post("/" +
                         (StringUtils.isBlank(key) ? "" : key) +
-                        URLEncoder.encode(query, "UTF-8"),
+                        query,
                         responseHandler);
                 break;
             default:
@@ -210,26 +212,28 @@ public class S3RequestHelper {
         if (requestHeaders != null) {
             request.headers().addAll(io.vertx.rxjava.core.MultiMap.newInstance(requestHeaders));
         }
-        populateAuthHeaders(method, key, query, request);
+        populateAuthHeaders(method, key, qsIncludedInAuth ? query : null, request);
         return request;
     }
 
     private String prepareQueryString(Map<String, String> queryString) {
         StringBuffer query = new StringBuffer();
-        List<Map.Entry<String, String>> qs = new ArrayList(queryString.entrySet());
-        qs.sort(new EntryComparator());
+        if (queryString != null && queryString.size() > 0) {
+            List<Map.Entry<String, String>> qs = new ArrayList(queryString.entrySet());
+            qs.sort(new EntryComparator());
 
-        qs.stream().forEach(entry -> {
-            try {
-                query.append(StringUtils.isBlank(entry.getValue()) ?
-                        URLEncoder.encode(entry.getKey(), "UTF-8") + "&" :
-                        URLEncoder.encode(entry.getKey(), "UTF-8") + "=" + URLEncoder.encode(entry.getValue(), "UTF-8") + "&");
-            } catch (UnsupportedEncodingException e) {
-                throw Throwables.propagate(e);
-            }
-        });
-        query.deleteCharAt(query.length() - 1);
-        return StringUtils.isBlank(query.toString()) ? "" : "?" + query.toString();
+            qs.stream().forEach(entry -> {
+                try {
+                    query.append(StringUtils.isBlank(entry.getValue()) ?
+                            URLEncoder.encode(entry.getKey(), "UTF-8") + "&" :
+                            URLEncoder.encode(entry.getKey(), "UTF-8") + "=" + URLEncoder.encode(entry.getValue(), "UTF-8") + "&");
+                } catch (UnsupportedEncodingException e) {
+                    throw Throwables.propagate(e);
+                }
+            });
+            query.deleteCharAt(query.length() - 1);
+        }
+        return query == null || StringUtils.isBlank(query.toString()) ? "" : "?" + query.toString();
     }
 
     class EntryComparator implements Comparator<Map.Entry<String, String>> {

@@ -1,8 +1,10 @@
-package com.vertx.s3.client.entity;
+package com.vertx.s3.client.entity.response;
 
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
+import com.vertx.s3.client.entity.CommonPrefixes;
+import com.vertx.s3.client.entity.Contents;
 
 import java.util.List;
 
