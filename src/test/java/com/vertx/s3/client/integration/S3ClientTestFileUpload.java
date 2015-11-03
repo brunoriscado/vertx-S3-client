@@ -56,8 +56,8 @@ public class S3ClientTestFileUpload {
         return uploadHandler;
     }
 
-    @Test
-    public void testCreatePutRequestFromStream(TestContext context) throws IOException {
+    @Before
+    public void setup() {
         this.client = new S3Client(accessKey, secretKey, testBucket);
         this.vertx = Vertx.vertx();
         this.vertx.createHttpServer(
@@ -102,9 +102,10 @@ public class S3ClientTestFileUpload {
                         },
                         () -> {
                         });
+    }
 
-        //////////// start test ////////////
-
+    @Test
+    public void testCreatePutRequestFromStream(TestContext context) throws IOException {
         Async async = context.async();
         final byte[] bytes1 = IOUtils.toByteArray(Thread.currentThread().getContextClassLoader().getResourceAsStream("static/test2.png"));
         final byte[] bytes2 = IOUtils.toByteArray(Thread.currentThread().getContextClassLoader().getResourceAsStream("static/test6.png"));

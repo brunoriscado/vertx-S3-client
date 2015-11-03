@@ -3,7 +3,7 @@ package com.vertx.s3.client;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.google.common.base.Throwables;
-import com.vertx.s3.client.entity.CompleteMultipartUpload;
+import com.vertx.s3.client.entity.request.CompleteMultipartUpload;
 import com.vertx.s3.client.entity.Part;
 import com.vertx.s3.client.helper.S3RequestHelper;
 import io.vertx.core.Handler;
@@ -26,6 +26,8 @@ import org.slf4j.LoggerFactory;
 import rx.Observable;
 
 import java.io.UnsupportedEncodingException;
+import java.util.HashMap;
+import java.util.Map;
 
 public class S3Client {
     public static final String DEFAULT_ENDPOINT = "s3.amazonaws.com";
@@ -92,9 +94,12 @@ public class S3Client {
     // create GET -> request Object
     public Observable<HttpClientResponse> createGetRequest(String key) {
         ObservableHandler<HttpClientResponse> responseHandler = RxHelper.observableHandler();
+        //TODO remove querystring
+        Map<String, String> queryString = new HashMap<String, String>();
+        queryString.put("response-cache-control", "No-cache");
         try{
             HttpClientRequest httpRequest = new S3RequestHelper(bucket, awsAccessKey, awsSecretKey)
-                    .createRequest(client, HttpMethod.GET, key, "response-cache-control=No-cache", responseHandler.toHandler());
+                    .createRequest(client, HttpMethod.GET, key, queryString, responseHandler.toHandler());
             httpRequest.end();
         } catch (UnsupportedEncodingException e) {
             throw Throwables.propagate(e);
@@ -104,21 +109,18 @@ public class S3Client {
 
     public Observable<HttpClientResponse> createListObjectsRequest(String prefix, String delimiter, int maxKeys, String encodingType, String marker) {
         ObservableHandler<HttpClientResponse> responseHandler = RxHelper.observableHandler();
-        StringBuffer queryString = new StringBuffer();
-        queryString.append(StringUtils.isBlank(prefix) ? "" : "prefix=" + prefix + "&")
-                .append(StringUtils.isBlank(delimiter) ? "" : "delimiter=" + delimiter + "&")
-                .append(maxKeys > 0 ? "" : "max-keys=" + maxKeys + "&")
-                .append(StringUtils.isBlank(encodingType) ? "" : "encoding-type=" + encodingType + "&")
-                .append(StringUtils.isBlank(marker) ? "" : "marker=" + encodingType);
-        if (StringUtils.endsWith(queryString, "&")) {
-            queryString.deleteCharAt(queryString.length() - 1);
-        }
+        Map<String, String> queryString = new HashMap<String, String>();
+        queryString.put("prefix", prefix);
+        queryString.put("delimiter", delimiter);
+        queryString.put("max-keys", String.valueOf(maxKeys));
+        queryString.put("encoding-type", encodingType);
+        queryString.put("marker", marker);
         try{
             HttpClientRequest httpRequest = new S3RequestHelper(bucket, awsAccessKey, awsSecretKey)
                     .createRequest(client,
                             HttpMethod.GET,
                             null,
-                            queryString.toString(),
+                            queryString,
                             responseHandler.toHandler());
             httpRequest.end();
         } catch (UnsupportedEncodingException e) {
@@ -370,10 +372,12 @@ public class S3Client {
 
     public Observable<HttpClientResponse> initiateMultiPartUpload(String key, MultiMap metadata) {
         ObservableHandler<HttpClientResponse> responseHandler = RxHelper.observableHandler();
+        Map<String, String> queryString = new HashMap<String, String>();
+        queryString.put("uploads", null);
         try {
             HttpClientRequest httpRequest = new S3RequestHelper(bucket, awsAccessKey, awsSecretKey)
                     .setUserMetadataHeaders(metadata)
-                    .createRequest(client, HttpMethod.POST, key, "uploads", responseHandler.toHandler());
+                    .createRequest(client, HttpMethod.POST, key, queryString, responseHandler.toHandler());
             httpRequest.end();
         } catch (UnsupportedEncodingException e) {
             return Observable.error(e);
@@ -387,12 +391,15 @@ public class S3Client {
             return abortMultiPartUpload(uploadId, key);
         } else {
             ObservableHandler<HttpClientResponse> responseHandler = RxHelper.observableHandler();
+            Map<String, String> queryString = new HashMap<String, String>();
+            queryString.put("partNumber", String.valueOf(s3PartIdentifier.getPartNumber()));
+            queryString.put("uploadId", uploadId);
             try {
                 HttpClientRequest httpRequest = new S3RequestHelper(bucket, awsAccessKey, awsSecretKey)
                         .createRequest(client,
                                 HttpMethod.POST,
                                 key,
-                                "partNumber=" + s3PartIdentifier.getPartNumber() + "&uploadId=" + uploadId,
+                                queryString,
                                 responseHandler.toHandler());
 
                 httpRequest.putHeader(HttpHeaders.CONTENT_LENGTH.toString(), String.valueOf(fileSize));
@@ -416,9 +423,11 @@ public class S3Client {
 
     public Observable<HttpClientResponse> completeMultiPartUpload(String uploadId, String key, CompleteMultipartUpload parts) {
         ObservableHandler<HttpClientResponse> responseHandler = RxHelper.observableHandler();
+        Map<String, String> queryString = new HashMap<String, String>();
+        queryString.put("uploadId", uploadId);
         try {
             HttpClientRequest httpRequest = new S3RequestHelper(bucket, awsAccessKey, awsSecretKey)
-                    .createRequest(client, HttpMethod.POST, key, "uploadId=" + uploadId, responseHandler.toHandler());
+                    .createRequest(client, HttpMethod.POST, key, queryString, responseHandler.toHandler());
             httpRequest.end(xmlMapper.writeValueAsString(parts));
         } catch (UnsupportedEncodingException e) {
             return Observable.error(e);
@@ -432,9 +441,11 @@ public class S3Client {
     //all the parts have been submitted
     public Observable<HttpClientResponse> abortMultiPartUpload(String uploadId, String key) {
         ObservableHandler<HttpClientResponse> responseHandler = RxHelper.observableHandler();
+        Map<String, String> queryString = new HashMap<String, String>();
+        queryString.put("uploadId", uploadId);
         try {
             HttpClientRequest httpRequest = new S3RequestHelper(bucket, awsAccessKey, awsSecretKey)
-                    .createRequest(client, HttpMethod.DELETE, key, "uploadId=" + uploadId, responseHandler.toHandler());
+                    .createRequest(client, HttpMethod.DELETE, key, queryString, responseHandler.toHandler());
             httpRequest.end();
         } catch (UnsupportedEncodingException e) {
             return Observable.error(e);

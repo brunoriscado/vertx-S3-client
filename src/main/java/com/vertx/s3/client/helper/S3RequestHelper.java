@@ -1,5 +1,6 @@
 package com.vertx.s3.client.helper;
 
+import com.google.common.base.Throwables;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.core.http.HttpMethod;
@@ -85,7 +86,7 @@ public class S3RequestHelper {
                     (contentType == null ? "" : contentType) + "\n\n" + // Skipping the date, we'll use the x-amz date instead
                     canonicalizedAmzHeaders +
                     "/" + bucket +
-                    (StringUtils.isBlank(key) ? "/" : "/" + key) +
+                    (StringUtils.isBlank(key) ? "/" : "/" + key + "/") +
                     queryString;
 
             String signature;
@@ -126,7 +127,7 @@ public class S3RequestHelper {
         List<Map.Entry<String, String>> sorted = headers.entries();
         sorted.sort(new EntryComparator());
         sorted.stream().forEach(entry ->
-                    buffer.append(StringUtils.lowerCase(entry.getKey()).trim() + ":" + entry.getValue() + "\n"));
+                buffer.append(StringUtils.lowerCase(entry.getKey()).trim() + ":" + entry.getValue() + "\n"));
         return buffer.toString();
     }
 
@@ -170,10 +171,10 @@ public class S3RequestHelper {
             HttpClient client,
             HttpMethod method,
             String key,
-            String queryString,
+            Map<String, String> queryString,
             Handler<HttpClientResponse> responseHandler) throws UnsupportedEncodingException {
         HttpClientRequest request = null;
-        String query = StringUtils.isBlank(queryString) ? "" : "?" + queryString;
+        String query = prepareQueryString(queryString);
         switch (method) {
             case GET:
                 request = client.get("/" +
@@ -213,6 +214,24 @@ public class S3RequestHelper {
         return request;
     }
 
+    private String prepareQueryString(Map<String, String> queryString) {
+        StringBuffer query = new StringBuffer();
+        List<Map.Entry<String, String>> qs = new ArrayList(queryString.entrySet());
+        qs.sort(new EntryComparator());
+
+        qs.stream().forEach(entry -> {
+            try {
+                query.append(StringUtils.isBlank(entry.getValue()) ?
+                        URLEncoder.encode(entry.getKey(), "UTF-8") + "&" :
+                        URLEncoder.encode(entry.getKey(), "UTF-8") + "=" + URLEncoder.encode(entry.getValue(), "UTF-8") + "&");
+            } catch (UnsupportedEncodingException e) {
+                throw Throwables.propagate(e);
+            }
+        });
+        query.deleteCharAt(query.length() - 1);
+        return StringUtils.isBlank(query.toString()) ? "" : "?" + query.toString();
+    }
+
     class EntryComparator implements Comparator<Map.Entry<String, String>> {
         @Override
         public int compare(Map.Entry<String, String> o1, Map.Entry<String, String> o2) {
@@ -224,23 +243,5 @@ public class S3RequestHelper {
             }
             return result;
         }
-    }
-
-    /**
-     * FIXME - need to find another to calculate the md5 header using vertx
-     * Calculate content MD5 header
-     */
-    public static String computeContentMD5HeaderValue( FileInputStream fis ) throws IOException, NoSuchAlgorithmException {
-        DigestInputStream dis = new DigestInputStream(fis, MessageDigest.getInstance( "MD5" ));
-
-        byte[] buffer = new byte[8192];
-        while( dis.read( buffer ) > 0 );
-
-        String md5Content = new String(org.apache.commons.codec.binary.Base64.encodeBase64(dis.getMessageDigest().digest()));
-
-        // Effectively resets the stream to be beginning of the file
-        // via a FileChannel.
-        fis.getChannel().position( 0 );
-        return md5Content;
     }
 }

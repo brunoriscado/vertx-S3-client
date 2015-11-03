@@ -1,4 +1,4 @@
-package com.vertx.s3.client.entity;
+package com.vertx.s3.client.entity.response;
 
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;

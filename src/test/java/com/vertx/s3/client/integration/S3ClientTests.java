@@ -236,6 +236,7 @@ public class S3ClientTests {
         client.createGetRequest("test2.png")
                 .subscribe(response -> {
                     context.assertEquals(200, response.statusCode());
+                    async.complete();
                 },
                 context::fail);
     }
@@ -252,6 +253,7 @@ public class S3ClientTests {
     }
 
     @Test
+    @Ignore
     public void testObservableListObjectsRequest(TestContext context) {
         Async async = context.async();
         client.createListObjectsRequest("11111111/1111/1111/1111/111111111111", "/", 10, null, null)
