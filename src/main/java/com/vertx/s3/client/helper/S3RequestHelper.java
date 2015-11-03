@@ -7,9 +7,11 @@ import io.vertx.core.http.HttpMethod;
 import io.vertx.rxjava.core.http.HttpClient;
 import io.vertx.rxjava.core.http.HttpClientRequest;
 import io.vertx.rxjava.core.http.HttpClientResponse;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sun.misc.BASE64Encoder;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -45,6 +47,10 @@ public class S3RequestHelper {
 
     public S3RequestHelper(String bucket, String awsAccessKey, String awsSecretKey) {
         this(bucket, awsAccessKey, awsSecretKey, "", "");
+    }
+
+    public S3RequestHelper(String bucket, String awsAccessKey, String awsSecretKey, String contentMd5) {
+        this(bucket, awsAccessKey, awsSecretKey, contentMd5, "");
     }
 
     public S3RequestHelper(String bucket, String awsAccessKey, String awsSecretKey, String contentMd5, String contentType) {
@@ -247,5 +253,17 @@ public class S3RequestHelper {
             }
             return result;
         }
+    }
+
+    public static String generateContentMD5(String content) {
+        String result = null;
+        try {
+            BASE64Encoder encoder = new BASE64Encoder();
+            MessageDigest digest = DigestUtils.getDigest("MD5");
+            result = encoder.encode(digest.digest(content.getBytes("UTF-8")));
+        } catch (UnsupportedEncodingException e) {
+            LOGGER.warn("Error generating base64-encoded 128-bit MD5 digest for content");
+        }
+        return result;
     }
 }

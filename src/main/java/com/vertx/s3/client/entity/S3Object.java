@@ -1,5 +1,6 @@
 package com.vertx.s3.client.entity;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 
@@ -13,6 +14,7 @@ public class S3Object {
     private String key;
 
     @JacksonXmlProperty(localName = "VersionId")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private String versionId;
 
     public String getKey() {

@@ -1,6 +1,7 @@
 package com.vertx.s3.client.integration;
 
 import com.vertx.s3.client.S3Client;
+import com.vertx.s3.client.entity.S3Object;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.core.file.AsyncFile;
@@ -28,6 +29,8 @@ import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by bruno on 28/10/15.
@@ -252,6 +255,23 @@ public class S3ClientTests {
                     context.assertEquals(204, response.statusCode());
                 },
                 context::fail);
+    }
+
+    @Test
+    @Ignore
+    public void testObservableCreateDeleteAllRequest(TestContext context) {
+        Async async = context.async();
+        S3Object object = new S3Object();
+        object.setKey("11111111/1111/1111/1111/111111111111");
+        List<S3Object> objectsToRemove = new ArrayList<S3Object>();
+        objectsToRemove.add(object);
+        client.createDeleteAllRequest(objectsToRemove)
+                .subscribe(response -> {
+                            response.bodyHandler(body ->
+                                    body.toString("UTF-8"));
+                            context.assertEquals(200, response.statusCode());
+                        },
+                        context::fail);
     }
 
     @Test

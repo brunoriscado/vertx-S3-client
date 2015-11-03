@@ -3,8 +3,10 @@ package com.vertx.s3.client;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.google.common.base.Throwables;
+import com.vertx.s3.client.entity.S3Object;
 import com.vertx.s3.client.entity.request.CompleteMultipartUpload;
 import com.vertx.s3.client.entity.Part;
+import com.vertx.s3.client.entity.request.Delete;
 import com.vertx.s3.client.helper.S3RequestHelper;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
@@ -27,6 +29,7 @@ import rx.Observable;
 
 import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class S3Client {
@@ -371,6 +374,33 @@ public class S3Client {
         return responseHandler;
     }
 
+    /**
+     * The delete all request is actually a post request which takes payload of objects to be removed
+     * @param objectsToRemove
+     * @return
+     */
+    public Observable<HttpClientResponse> createDeleteAllRequest(List<S3Object> objectsToRemove) {
+        ObservableHandler<HttpClientResponse> responseHandler = RxHelper.observableHandler();
+        try {
+            Delete deletePayload = new Delete();
+            deletePayload.setObjects(objectsToRemove);
+            String payload = xmlMapper.writeValueAsString(deletePayload);
+            String contentMD5 = S3RequestHelper.generateContentMD5(payload);
+
+            Map<String, String> queryString = new HashMap<String, String>();
+            queryString.put("delete", null);
+            HttpClientRequest httpRequest = new S3RequestHelper(bucket, awsAccessKey, awsSecretKey, contentMD5)
+                    .addRequestHeaders("Content-MD5", contentMD5)
+                    .createRequest(client, HttpMethod.POST, null, queryString, responseHandler.toHandler(), true);
+            httpRequest.end(payload);
+        } catch (UnsupportedEncodingException e) {
+            return Observable.error(e);
+        } catch (JsonProcessingException e) {
+            return Observable.error(e);
+        }
+        return responseHandler;
+    }
+
     /////////////// DELETE REQUESTS ///////////////
 
     /////////////// MULTIPART REQUESTS ///////////////
@@ -408,7 +438,6 @@ public class S3Client {
                 Buffer buffer = Buffer.buffer();
 
                 upload.endHandler(event -> {
-                    //TODO - Check whether the content-lenght needs to be in the auth signature
                     httpRequest.end(buffer);
                 });
 
