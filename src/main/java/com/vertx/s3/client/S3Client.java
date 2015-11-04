@@ -78,13 +78,9 @@ public class S3Client {
 
     /////////////// PRE SIGNED URL ///////////////
 
-    public URL generatePresignedURL(String uuid) {
-        try {
-            S3RequestHelper requestHelper = new S3RequestHelper(bucket, awsAccessKey, awsSecretKey);
-            return requestHelper.calculatePreSignedURL(uuid, canonicalizedResource);
-        } catch (MalformedURLException | UnsupportedEncodingException e) {
-            throw Throwables.propagate(e);
-        }
+    public URL generatePresignedURL(String uuid) throws MalformedURLException, UnsupportedEncodingException {
+        S3RequestHelper requestHelper = new S3RequestHelper(bucket, awsAccessKey, awsSecretKey);
+        return requestHelper.calculatePreSignedURL(uuid, canonicalizedResource);
     }
 
     /////////////// PRE SIGNED URL ///////////////

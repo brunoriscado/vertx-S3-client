@@ -22,10 +22,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.io.*;
+import java.net.MalformedURLException;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -291,7 +289,13 @@ public class S3ClientTests {
     @Test
     @Ignore
     public void testPreSignedURLGeneration(TestContext context) {
-        client.generatePresignedURL("11111111/1111/1111/1111/111111111111");
+        try {
+            client.generatePresignedURL("11111111/1111/1111/1111/111111111111");
+        } catch (MalformedURLException e) {
+            context.fail();
+        } catch (UnsupportedEncodingException e) {
+            context.fail();
+        }
     }
 
     @Test
