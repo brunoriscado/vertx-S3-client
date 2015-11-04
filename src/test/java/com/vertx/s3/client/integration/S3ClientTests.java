@@ -126,7 +126,7 @@ public class S3ClientTests {
                         (uploadBuffer, buffer) -> uploadBuffer.appendBuffer(buffer))
                 .doOnNext(buffer -> {
                     MultiMap userMetadata = MultiMap.caseInsensitiveMultiMap();
-                    HttpClientRequest request = client.createPutRequest("test2",
+                    HttpClientRequest request = client.createPutRequest("11111111/1111/1111/1111/111111111111",
                             userMetadata,
                             new Handler<HttpClientResponse>() {
                                 @Override public void
@@ -286,6 +286,12 @@ public class S3ClientTests {
                             context.assertEquals(200, response.statusCode());
                         },
                         context::fail);
+    }
+
+    @Test
+    @Ignore
+    public void testPreSignedURLGeneration(TestContext context) {
+        client.generatePresignedURL("11111111/1111/1111/1111/111111111111");
     }
 
     @Test

@@ -3,9 +3,9 @@ package com.vertx.s3.client;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.google.common.base.Throwables;
+import com.vertx.s3.client.entity.Part;
 import com.vertx.s3.client.entity.S3Object;
 import com.vertx.s3.client.entity.request.CompleteMultipartUpload;
-import com.vertx.s3.client.entity.Part;
 import com.vertx.s3.client.entity.request.Delete;
 import com.vertx.s3.client.helper.S3RequestHelper;
 import io.vertx.core.Handler;
@@ -28,6 +28,8 @@ import org.slf4j.LoggerFactory;
 import rx.Observable;
 
 import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -73,6 +75,19 @@ public class S3Client {
                 bucket + "." + region + "." + endpointBase;
         this.client = vertx.createHttpClient(new HttpClientOptions().setDefaultHost(canonicalizedResource));
     }
+
+    /////////////// PRE SIGNED URL ///////////////
+
+    public URL generatePresignedURL(String uuid) {
+        try {
+            S3RequestHelper requestHelper = new S3RequestHelper(bucket, awsAccessKey, awsSecretKey);
+            return requestHelper.calculatePreSignedURL(uuid, canonicalizedResource);
+        } catch (MalformedURLException | UnsupportedEncodingException e) {
+            throw Throwables.propagate(e);
+        }
+    }
+
+    /////////////// PRE SIGNED URL ///////////////
 
     /////////////// GET REQUESTS ///////////////
 
