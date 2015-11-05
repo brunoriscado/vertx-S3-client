@@ -20,4 +20,20 @@ public class DeleteResult {
     @JacksonXmlProperty(localName = "Error")
     @JacksonXmlElementWrapper(useWrapping = false)
     private List<Error> error;
+
+    public List<Error> getError() {
+        return error;
+    }
+
+    public void setError(List<Error> error) {
+        this.error = error;
+    }
+
+    public List<Deleted> getDeleted() {
+        return deleted;
+    }
+
+    public void setDeleted(List<Deleted> deleted) {
+        this.deleted = deleted;
+    }
 }

@@ -15,6 +15,8 @@ import org.slf4j.LoggerFactory;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.net.URLEncoder;
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
@@ -27,6 +29,7 @@ public class S3RequestHelper {
     private static final Logger LOGGER = LoggerFactory.getLogger(S3RequestHelper.class);
 
     private static final String AMAZON_METADATA_HEADER_PREFIX = "X-Amz-Meta-";
+    private static final int DEFAULT_EXPIRY = 60 * 60 * 1000;
 
     private String bucket;
 
@@ -72,10 +75,13 @@ public class S3RequestHelper {
      * @param key
      * @param request
      */
-    private void populateAuthHeaders(HttpMethod method, String key, String queryString, HttpClientRequest request) {
+    public String calculateAuth(HttpMethod method, String key, String queryString, String expiry, HttpClientRequest request) {
+        String signature = null;
         if (isAuthenticated()) {
             String xamzdate = currentDateString();
-            request.putHeader("X-Amz-Date", xamzdate);
+            if (request != null) {
+                request.putHeader("X-Amz-Date", xamzdate);
+            }
 
             MultiMap amzHeaders = MultiMap.caseInsensitiveMultiMap();
             amzHeaders.add("X-Amz-Date", xamzdate);
@@ -86,13 +92,12 @@ public class S3RequestHelper {
             String canonicalizedAmzHeaders = getCanonicalizedAmzHeaders(amzHeaders);
             String toSign = method + "\n" +
                     (contentMd5 == null ? "" : contentMd5) + "\n" +
-                    (contentType == null ? "" : contentType) + "\n\n" + // Skipping the date, we'll use the x-amz date instead
-                    canonicalizedAmzHeaders +
+                    (contentType == null ? "" : contentType) + "\n" + // Skipping the date, we'll use the x-amz date instead
+                    (StringUtils.isBlank(expiry) ? "\n" + canonicalizedAmzHeaders : expiry + "\n") +
                     "/" + bucket +
                     (StringUtils.isBlank(key) ? "/" : "/" + key) +
                     (StringUtils.isBlank(queryString) ? "" : queryString);
 
-            String signature;
             try {
                 signature = b64SignHmacSha1(awsSecretKey, toSign);
             } catch (InvalidKeyException | NoSuchAlgorithmException e) {
@@ -104,9 +109,11 @@ public class S3RequestHelper {
             String authorization = "AWS " + awsAccessKey + ":" + signature;
 
             // Put that nasty auth string in the headers and let vert.x deal
-            request.putHeader("Authorization", authorization);
+            if (request != null) {
+                request.putHeader("Authorization", authorization);
+            }
         }
-        // Otherwise not needed
+        return signature;
     }
 
     private boolean isAuthenticated() {
@@ -214,7 +221,7 @@ public class S3RequestHelper {
         if (requestHeaders != null) {
             request.headers().addAll(io.vertx.rxjava.core.MultiMap.newInstance(requestHeaders));
         }
-        populateAuthHeaders(method, key, qsIncludedInAuth ? query : null, request);
+        calculateAuth(method, key, qsIncludedInAuth ? query : null, null, request);
         return request;
     }
 
@@ -260,5 +267,19 @@ public class S3RequestHelper {
             LOGGER.warn("Error generating base64-encoded 128-bit MD5 digest for content");
         }
         return result;
+    }
+
+    private String calculateExpiry() {
+        long exp = (System.currentTimeMillis() + DEFAULT_EXPIRY) / 1000;
+        return String.valueOf(exp);
+    }
+
+    public URL calculatePreSignedURL (String uuid, String canonicalizedResource) throws MalformedURLException, UnsupportedEncodingException {
+        String expiry = calculateExpiry();
+        String urlString = "https://" + canonicalizedResource + "/" + uuid  +
+                "?AWSAccessKeyId=" + awsAccessKey +
+                "&Expires=" + expiry +
+                "&Signature=" + URLEncoder.encode(calculateAuth(HttpMethod.GET, uuid, null, expiry, null), "UTF-8");
+        return new URL(urlString);
     }
 }

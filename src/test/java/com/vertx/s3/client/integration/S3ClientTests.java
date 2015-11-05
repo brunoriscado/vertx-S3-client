@@ -22,10 +22,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.io.*;
+import java.net.MalformedURLException;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -126,7 +124,7 @@ public class S3ClientTests {
                         (uploadBuffer, buffer) -> uploadBuffer.appendBuffer(buffer))
                 .doOnNext(buffer -> {
                     MultiMap userMetadata = MultiMap.caseInsensitiveMultiMap();
-                    HttpClientRequest request = client.createPutRequest("test2",
+                    HttpClientRequest request = client.createPutRequest("11111111/1111/1111/1111/111111111111",
                             userMetadata,
                             new Handler<HttpClientResponse>() {
                                 @Override public void
@@ -286,6 +284,18 @@ public class S3ClientTests {
                             context.assertEquals(200, response.statusCode());
                         },
                         context::fail);
+    }
+
+    @Test
+    @Ignore
+    public void testPreSignedURLGeneration(TestContext context) {
+        try {
+            client.generatePresignedURL("11111111/1111/1111/1111/111111111111");
+        } catch (MalformedURLException e) {
+            context.fail();
+        } catch (UnsupportedEncodingException e) {
+            context.fail();
+        }
     }
 
     @Test
