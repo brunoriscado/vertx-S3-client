@@ -11,7 +11,6 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sun.misc.BASE64Encoder;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -262,9 +261,8 @@ public class S3RequestHelper {
     public static String generateContentMD5(String content) {
         String result = null;
         try {
-            BASE64Encoder encoder = new BASE64Encoder();
             MessageDigest digest = DigestUtils.getDigest("MD5");
-            result = encoder.encode(digest.digest(content.getBytes("UTF-8")));
+            result = new String(Base64.getEncoder().encode(digest.digest(content.getBytes("UTF-8"))));
         } catch (UnsupportedEncodingException e) {
             LOGGER.warn("Error generating base64-encoded 128-bit MD5 digest for content");
         }
