@@ -54,12 +54,11 @@ public class TestRunner {
                                         userMetadata);
                             })
                             .subscribe(
-                                    next -> {
-                                        request.response().setStatusCode(200).end();
-                                    },
+                                    next -> {},
                                     error -> {
                                         request.response().setStatusCode(500).end();
-                                    });
+                                    },
+                                    () -> request.response().setStatusCode(200).end());
                 })
                     .listenObservable()
                             .subscribe(
