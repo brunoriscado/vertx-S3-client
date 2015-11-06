@@ -1,7 +1,11 @@
 package com.vertx.s3.client.unit;
 
+import io.vertx.core.Handler;
+import io.vertx.rx.java.ObservableHandler;
+import io.vertx.rxjava.core.Future;
 import io.vertx.rxjava.core.buffer.Buffer;
 import io.vertx.rxjava.core.streams.ReadStream;
+import rx.Observable;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -18,31 +22,37 @@ public class ReadInputStream extends InputStream {
     private AtomicBoolean readStreamPaused;
     private static final int MAX_QUEUE = 32768;
     private BlockingDeque<Byte> activeQ;
-    private BlockingDeque<Byte> stoppedBuffer;
-    private ReadStream<Buffer> inputStream;
 
-    public static ReadInputStream getInstance(ReadStream<Buffer> inputStream) {
-        return InnderReadInputStream.getInstance(inputStream);
+    public Future getFuture() {
+        return future;
     }
 
-    private ReadInputStream(ReadStream<Buffer> inputStream) {
-        this.readStreamPaused = new AtomicBoolean(true);
+    public void setFuture(Future future) {
+        this.future = future;
+    }
+
+    private BlockingDeque<Byte> stoppedBuffer;
+    private ReadStream<Buffer> inputStream;
+    private Future future;
+
+    public ReadInputStream(ReadStream<Buffer> inputStream) {
+        this.readStreamPaused = new AtomicBoolean(false);
         this.readStreamFinished = new AtomicBoolean(false);
         this.activeQ = new LinkedBlockingDeque<Byte>(MAX_QUEUE);
         this.stoppedBuffer = new LinkedBlockingDeque<Byte>();
         this.inputStream = inputStream;
 
         this.inputStream.handler(handleBuffer -> {
-                int index = 0;
-                while (index < handleBuffer.length()) {
-                    if (activeQ.remainingCapacity() == 0) {
-                        stoppedBuffer.offerFirst(handleBuffer.getByte(index));
-                        stop();
-                    } else {
-                        activeQ.offerFirst(handleBuffer.getByte(index));
-                    }
-                    index++;
+            int index = 0;
+            while (index < handleBuffer.length()) {
+                if (activeQ.remainingCapacity() == 0) {
+                    stoppedBuffer.offerFirst(handleBuffer.getByte(index));
+                    stop();
+                } else {
+                    activeQ.offerFirst(handleBuffer.getByte(index));
                 }
+                index++;
+            }
         });
 
         this.inputStream.endHandler(endHandle -> {
@@ -52,13 +62,13 @@ public class ReadInputStream extends InputStream {
 
     public ReadInputStream start() {
         this.inputStream.resume();
-        this.readStreamPaused.set(false);
+        readStreamPaused.set(false);
         return this;
     }
 
     public ReadInputStream stop() {
         this.inputStream.pause();
-        this.readStreamPaused.set(true);
+        readStreamPaused.set(true);
         return this;
     }
 
@@ -68,11 +78,12 @@ public class ReadInputStream extends InputStream {
             //Stream finished check if activeQ and pausedBuffer still have bytes
             if (stoppedBuffer.isEmpty() && activeQ.isEmpty()) {
                 //if activeQ and stopped buffer are also empty finish by return -1
+                future.complete(this);
                 b = null;
             } else {
                 if (stoppedBuffer.isEmpty()) {
                     //activeQ still has bytes
-                    b = activeQ.pollLast(5000, TimeUnit.MILLISECONDS);
+                    b = activeQ.pollLast(1000, TimeUnit.MILLISECONDS);
                 } else {
                     //Stopped buffer still has bytes
                     b = stoppedBuffer.pollLast();
@@ -92,7 +103,7 @@ public class ReadInputStream extends InputStream {
                         b = stoppedBuffer.pollLast();
                     }
                 } else {
-                    b = activeQ.pollLast(5000, TimeUnit.MILLISECONDS);
+                    b = activeQ.pollLast(1000, TimeUnit.MILLISECONDS);
                 }
             } else {
                 if (activeQ.isEmpty()) {
@@ -106,7 +117,7 @@ public class ReadInputStream extends InputStream {
                         b = stoppedBuffer.pollLast();
                     }
                 } else {
-                    b = activeQ.pollLast(5000, TimeUnit.MILLISECONDS);
+                    b = activeQ.pollLast(1000, TimeUnit.MILLISECONDS);
                 }
             }
         }
@@ -127,23 +138,11 @@ public class ReadInputStream extends InputStream {
 
     @Override
     public void close() throws IOException {
-        stop();
         super.close();
     }
 
     @Override
     public int available() throws IOException {
         return 0;
-    }
-
-    private static class InnderReadInputStream {
-        static ReadInputStream INSTANCE;
-
-        public static ReadInputStream getInstance(ReadStream<Buffer> inputstream) {
-            if (INSTANCE == null) {
-                INSTANCE = new ReadInputStream(inputstream);
-            }
-            return INSTANCE;
-        }
     }
 }
