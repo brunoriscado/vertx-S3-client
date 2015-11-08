@@ -75,10 +75,11 @@ public class TestReadInputStream {
                         uploadHandler.flatMap(
                                 fileUpload -> {
 
+                                    //Create the stream in the event loop thread
                                     ReadInputStream in = new ReadInputStream(fileUpload);
 
                                     vertx.<InputStream>executeBlocking(future -> {
-
+                                        //Read the stream in a worker thread
                                         in.setFuture(future);
 
                                         FileOutputStream fileStr = null;

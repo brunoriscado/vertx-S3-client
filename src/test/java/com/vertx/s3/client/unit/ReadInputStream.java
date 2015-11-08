@@ -35,6 +35,18 @@ public class ReadInputStream extends InputStream {
     private ReadStream<Buffer> inputStream;
     private Future future;
 
+    public ReadInputStream(ReadStream<Buffer> inputStream, Handler<Buffer> handleBuffer, Handler<Void> endHandler) {
+        this.readStreamPaused = new AtomicBoolean(false);
+        this.readStreamFinished = new AtomicBoolean(false);
+        this.activeQ = new LinkedBlockingDeque<Byte>(MAX_QUEUE);
+        this.stoppedBuffer = new LinkedBlockingDeque<Byte>();
+        this.inputStream = inputStream;
+
+        this.inputStream.handler(handleBuffer);
+
+        this.inputStream.endHandler(endHandler);
+    }
+
     public ReadInputStream(ReadStream<Buffer> inputStream) {
         this.readStreamPaused = new AtomicBoolean(false);
         this.readStreamFinished = new AtomicBoolean(false);
