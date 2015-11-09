@@ -188,32 +188,28 @@ public class S3RequestHelper {
         String query = prepareQueryString(queryString);
         switch (method) {
             case GET:
-                request = client.get("/" +
-                        (StringUtils.isBlank(key) ? "" : key) +
-                        query,
-                        responseHandler);
+                request = responseHandler != null ?
+                        client.get("/" + (StringUtils.isBlank(key) ? "" : key) + query, responseHandler) :
+                        client.get("/" + (StringUtils.isBlank(key) ? "" : key) + query);
                 break;
             case DELETE:
-                request = client.delete("/" +
-                        (StringUtils.isBlank(key) ? "" : key) +
-                        query,
-                        responseHandler);
+                request = responseHandler != null ?
+                        client.delete("/" + (StringUtils.isBlank(key) ? "" : key) + query, responseHandler) :
+                        client.delete("/" + (StringUtils.isBlank(key) ? "" : key) + query);
                 break;
             case PUT:
-                request = client.put("/" +
-                        (StringUtils.isBlank(key) ? "" : key) +
-                        query,
-                        responseHandler);
+                request = responseHandler != null ?
+                        client.put("/" + (StringUtils.isBlank(key) ? "" : key) + query, responseHandler) :
+                        client.put("/" + (StringUtils.isBlank(key) ? "" : key) + query);
                 //Populate user metadata headers when inserting content in S3
                 if (userMetadataHeaders != null) {
                     request.headers().addAll(io.vertx.rxjava.core.MultiMap.newInstance(userMetadataHeaders));
                 }
                 break;
             case POST:
-                request = client.post("/" +
-                        (StringUtils.isBlank(key) ? "" : key) +
-                        query,
-                        responseHandler);
+                request = responseHandler != null ?
+                        client.post("/" + (StringUtils.isBlank(key) ? "" : key) + query, responseHandler) :
+                        client.post("/" + (StringUtils.isBlank(key) ? "" : key) + query);
                 break;
             default:
                 LOGGER.warn("No request could be created with the http type method: {}", method);

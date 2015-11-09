@@ -1,9 +1,7 @@
 package com.vertx.s3.client.unit;
 
 import com.vertx.s3.client.S3Client;
-import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
-import io.vertx.core.file.AsyncFile;
 import io.vertx.core.file.OpenOptions;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpServerOptions;
@@ -12,8 +10,6 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.rx.java.ObservableHandler;
 import io.vertx.rx.java.RxHelper;
-import io.vertx.rxjava.core.Context;
-import io.vertx.rxjava.core.Future;
 import io.vertx.rxjava.core.Vertx;
 import io.vertx.rxjava.core.buffer.Buffer;
 import io.vertx.rxjava.core.http.HttpClient;
@@ -46,6 +42,7 @@ public class TestReadInputStream {
 
     private static final String testBucket = "";
     private S3Client client;
+    private HttpClient httpClient;
 
     /**
      * @throws java.lang.Exception
@@ -58,9 +55,8 @@ public class TestReadInputStream {
 
     @Before
     public void setup() {
-        this.client = new S3Client(accessKey, secretKey, testBucket);
         this.vertx = Vertx.vertx();
-        this.vertx.executeBlocking(handler -> {
+        this.client = new S3Client(accessKey, secretKey, testBucket);
             this.vertx.createHttpServer(
                     new HttpServerOptions()
                             .setPort(9111)
@@ -75,8 +71,22 @@ public class TestReadInputStream {
                         uploadHandler.flatMap(
                                 fileUpload -> {
 
-                                    //Create the stream in the event loop thread
-                                    ReadInputStream in = new ReadInputStream(fileUpload);
+                                    MultiMap userMetadata = MultiMap.caseInsensitiveMultiMap();
+                                    HttpClientRequest HttpClientRequest = client.createPutRequest(
+                                            fileUpload.filename(),
+                                            fileUpload.contentType(),
+                                            fileUpload.filename(),
+                                            Long.valueOf(request.getHeader("X-Filesize-Part" + integer.get())),
+                                            fileUpload,
+                                            userMetadata,
+                                            handle -> {
+                                                handle.statusCode();
+                                                handle.bodyHandler(body -> {
+                                                    body.toString("UTF-8");
+                                                });
+                                            });
+
+                                    ReadInputStream in = new ReadInputStream(fileUpload, HttpClientRequest);
 
                                     vertx.<InputStream>executeBlocking(future -> {
                                         //Read the stream in a worker thread
@@ -119,10 +129,7 @@ public class TestReadInputStream {
                                         }
                                     }, res -> {
 
-
                                     });
-
-
                                     return null;
                                 })
                                 .subscribe(
@@ -147,15 +154,12 @@ public class TestReadInputStream {
                             },
                             () -> {
                             });
-        }, event -> {});
     }
 
     @Test
-    @Ignore
     public void testCreatePutRequestFromStream(TestContext context) throws IOException {
         Async async = context.async();
         final byte[] bytes1 = IOUtils.toByteArray(Thread.currentThread().getContextClassLoader().getResourceAsStream("static/test2.png"));
-        final byte[] bytes2 = IOUtils.toByteArray(Thread.currentThread().getContextClassLoader().getResourceAsStream("static/test6.png"));
         HttpClient client = vertx.createHttpClient(new HttpClientOptions().setDefaultHost("localhost").setDefaultPort(9111));
 
         HttpClientRequest request = client.post("/").setChunked(false);
@@ -171,22 +175,12 @@ public class TestReadInputStream {
                 "\r\n";
         buffer.appendString(part1);
         buffer.appendBuffer(Buffer.newInstance(io.vertx.core.buffer.Buffer.buffer(bytes1)));
-        buffer.appendString("\r\n--" + boundary + "\r\n");
-        buffer.appendString("--" + boundary + "\r\n");
 
-        final String part2 = "--" + boundary + "\r\n" +
-                "Content-Disposition: form-data; name=\"file2\"; filename=\"test6.png\"\r\n" +
-                "Content-Type: application/octet-stream\r\n" +
-                "\r\n";
-
-        buffer.appendString(part2);
-        buffer.appendBuffer(Buffer.newInstance(io.vertx.core.buffer.Buffer.buffer(bytes2)));
         buffer.appendString("\r\n--" + boundary + "--\r\n");
 
 
         request.headers().set("Content-Length", String.valueOf(buffer.length()));
-        request.headers().set("X-Filesize-Part1", String.valueOf(bytes1.length));
-        request.headers().set("X-Filesize-Part2", String.valueOf(bytes2.length));
+        request.headers().set("X-Filesize-Part0", String.valueOf(bytes1.length));
         request.headers().set("Content-Type", "multipart/form-data; boundary=" + boundary);
 
         request.handler(
@@ -231,7 +225,6 @@ public class TestReadInputStream {
                             } catch (IOException e) {
                                 e.printStackTrace();
                             }
-
                         }
                         if (fileStr != null) {
                             try {

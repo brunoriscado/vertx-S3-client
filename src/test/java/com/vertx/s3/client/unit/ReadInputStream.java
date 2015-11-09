@@ -1,11 +1,10 @@
 package com.vertx.s3.client.unit;
 
 import io.vertx.core.Handler;
-import io.vertx.rx.java.ObservableHandler;
 import io.vertx.rxjava.core.Future;
 import io.vertx.rxjava.core.buffer.Buffer;
+import io.vertx.rxjava.core.http.HttpClientRequest;
 import io.vertx.rxjava.core.streams.ReadStream;
-import rx.Observable;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -35,7 +34,7 @@ public class ReadInputStream extends InputStream {
     private ReadStream<Buffer> inputStream;
     private Future future;
 
-    public ReadInputStream(ReadStream<Buffer> inputStream, Handler<Buffer> handleBuffer, Handler<Void> endHandler) {
+    public ReadInputStream(ReadStream<Buffer> inputStream, Handler<Buffer> handleBuffer, Handler<Void> endHandler, HttpClientRequest request) {
         this.readStreamPaused = new AtomicBoolean(false);
         this.readStreamFinished = new AtomicBoolean(false);
         this.activeQ = new LinkedBlockingDeque<Byte>(MAX_QUEUE);
@@ -48,6 +47,10 @@ public class ReadInputStream extends InputStream {
     }
 
     public ReadInputStream(ReadStream<Buffer> inputStream) {
+        this(inputStream, null);
+    }
+
+    public ReadInputStream(ReadStream < Buffer > inputStream, HttpClientRequest request) {
         this.readStreamPaused = new AtomicBoolean(false);
         this.readStreamFinished = new AtomicBoolean(false);
         this.activeQ = new LinkedBlockingDeque<Byte>(MAX_QUEUE);
@@ -55,6 +58,19 @@ public class ReadInputStream extends InputStream {
         this.inputStream = inputStream;
 
         this.inputStream.handler(handleBuffer -> {
+            Buffer buf = handleBuffer.copy();
+
+            if (request != null) {
+                //Stream to S3Client request
+                request.write(buf);
+                if (request.writeQueueFull()) {
+                    stop();
+                    request.drainHandler(v -> start());
+                }
+            }
+
+
+            //Stream to InputStream
             int index = 0;
             while (index < handleBuffer.length()) {
                 if (activeQ.remainingCapacity() == 0) {
@@ -69,6 +85,7 @@ public class ReadInputStream extends InputStream {
 
         this.inputStream.endHandler(endHandle -> {
             readStreamFinished.set(true);
+            request.end();
         });
     }
 

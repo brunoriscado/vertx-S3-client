@@ -198,7 +198,57 @@ public class S3Client {
         pump.start();
     }
 
-    // create PUT -> requestObject (which you can do stuff with)
+//    /**
+//     *
+//     * @param key
+//     * @param contentType
+//     * @param metadata
+//     * @return
+//     */
+//    public HttpClientRequest createPutRequest(String key, String contentType, String filename, long fileSize, MultiMap metadata) {
+//        return createPutRequest(key, contentType, filename, fileSize, metadata, null);
+//    }
+//
+//    /**
+//     *
+//     * @param key
+//     * @param contentType
+//     * @param metadata
+//     * @param handler
+//     * @return
+//     */
+//    public HttpClientRequest createPutRequest(String key, String contentType, String filename, long fileSize, MultiMap metadata, Handler<HttpClientResponse> handler) {
+//        HttpClientRequest httpRequest = null;
+//        try {
+//            httpRequest = new S3RequestHelper(bucket, awsAccessKey, awsSecretKey)
+//                    .addRequestHeaders(HttpHeaders.CONTENT_TYPE.toString(), contentType)
+//                    .addRequestHeaders("Content-Disposition", "form-data; filename=" + filename + ";")
+//                    .setUserMetadataHeaders(metadata)
+//                    .createRequest(client, HttpMethod.PUT, key, null, handler, true);
+//            httpRequest.putHeader(HttpHeaders.CONTENT_LENGTH.toString(), String.valueOf(fileSize));
+//        } catch (UnsupportedEncodingException e) {
+//            throw Throwables.propagate(e);
+//        }
+//        return httpRequest;
+//    }
+//
+//    /**
+//     *
+//     * @param key
+//     * @param metadata
+//     * @return
+//     */
+//    public HttpClientRequest createPutRequest(String key, MultiMap metadata) {
+//        return createPutRequest(key, metadata, null);
+//    }
+//
+    /**
+     *
+     * @param key
+     * @param metadata
+     * @param handler
+     * @return
+     */
     public HttpClientRequest createPutRequest(String key, MultiMap metadata, Handler<HttpClientResponse> handler) {
         HttpClientRequest httpRequest = null;
         try {
@@ -211,7 +261,15 @@ public class S3Client {
         return httpRequest;
     }
 
-    // create PUT -> requestObject (which you can do stuff with)
+    /**
+     *
+     * @param key
+     * @param contentType
+     * @param filename
+     * @param metadata
+     * @param handler
+     * @return
+     */
     public HttpClientRequest createPutRequest(String key, String contentType, String filename, MultiMap metadata, Handler<HttpClientResponse> handler) {
         HttpClientRequest httpRequest = null;
         try {
@@ -227,7 +285,13 @@ public class S3Client {
     }
 
 
-    // PUT (bucket, key, data) -> handler(Response)
+    /**
+     *
+     * @param key
+     * @param data
+     * @param metadata
+     * @return
+     */
     public Observable<HttpClientResponse> createPutRequest(String key, Buffer data, MultiMap metadata) {
         ObservableHandler<HttpClientResponse> responseHandler = RxHelper.observableHandler();
         try {
@@ -242,8 +306,14 @@ public class S3Client {
         return responseHandler;
     }
 
-    /*
-     * uploads the file contents to S3.
+    /**
+     *
+     * @param key
+     * @param contentType
+     * @param filename
+     * @param upload
+     * @param metadata
+     * @return
      */
     public Observable<HttpClientResponse> createPutRequest(String key, String contentType, String filename, ReadStream<Buffer> upload, MultiMap metadata) {
         if (LOGGER.isDebugEnabled()) {
@@ -273,8 +343,43 @@ public class S3Client {
         return responseHandler;
     }
 
-    /*
-     * uploads the file contents to S3.
+    public HttpClientRequest createPutRequest(String key, String contentType, String filename, long fileSize, ReadStream<Buffer> upload, MultiMap metadata, Handler<HttpClientResponse> handler) {
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("S3 request bucket: {}, key: {}", bucket, key);
+        }
+        try {
+            HttpClientRequest httpRequest = new S3RequestHelper(bucket, awsAccessKey, awsSecretKey, null, contentType)
+                    .addRequestHeaders(HttpHeaders.CONTENT_TYPE.toString(), contentType)
+                    .addRequestHeaders("Content-Disposition", "form-data; filename=" + filename + ";")
+                    .setUserMetadataHeaders(metadata)
+                    .createRequest(client, HttpMethod.PUT, key, null, handler, true);
+
+            httpRequest.putHeader(HttpHeaders.CONTENT_LENGTH.toString(), String.valueOf(fileSize));
+
+//            Buffer buffer = Buffer.buffer();
+//
+//            upload.endHandler(event -> {
+//                httpRequest.end(buffer);
+//            });
+//
+//            Pump pump = Pump.<Buffer>pump(upload, httpRequest);
+//            pump.start();
+            return httpRequest;
+        } catch (UnsupportedEncodingException e) {
+            Throwables.propagate(e);
+        }
+        return null;
+    }
+
+    /**
+     *
+     * @param key
+     * @param contentType
+     * @param filename
+     * @param fileSize
+     * @param upload
+     * @param metadata
+     * @return
      */
     public Observable<HttpClientResponse> createPutRequest(String key, String contentType, String filename, long fileSize, ReadStream<Buffer> upload, MultiMap metadata) {
         if (LOGGER.isDebugEnabled()) {
@@ -304,6 +409,16 @@ public class S3Client {
         return responseHandler;
     }
 
+    /**
+     *
+     * @param key
+     * @param contentType
+     * @param filename
+     * @param fileSize
+     * @param upload
+     * @param metadata
+     * @return
+     */
     public Observable<HttpClientResponse> createPutRequestOption(String key, String contentType, String filename, long fileSize, ReadStream<Buffer> upload, MultiMap metadata) {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("S3 request bucket: {}, key: {}", bucket, key);
@@ -317,6 +432,16 @@ public class S3Client {
         }
     }
 
+    /**
+     *
+     * @param key
+     * @param contentType
+     * @param filename
+     * @param fileSize
+     * @param upload
+     * @param metadata
+     * @return
+     */
     public Observable<HttpClientResponse> createPutRequestTEST(String key, String contentType, String filename, long fileSize, ReadStream<Buffer> upload, MultiMap metadata) {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("S3 request bucket: {}, key: {}", bucket, key);
